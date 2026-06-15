@@ -1,5 +1,6 @@
 import json
 from typing import Dict, Any, List
+from signal_fusion import SIGNAL_1_TIERS
 
 # Core mapping for delta calculations
 PRIORITY_RANK = {'Low': 1, 'Medium': 2, 'High': 3, 'Critical': 4}
@@ -35,44 +36,69 @@ def generate_dossier(ticket: Dict[str, Any], classifier_confidence: float,
     evidence = []
 
     # ---------------------------------------------------------
-    # EVIDENCE VECTOR 1: Keyword Extraction
+    # EVIDENCE VECTOR 1: Keyword Extraction (Bucketed Polarity)
     # ---------------------------------------------------------
-    kws = matched_keywords[:5] if matched_keywords else []
+    pos_kws = []
+    neg_kws = []
+    net_weight = 0.0
+
+    for kw in matched_keywords:
+        kw_w = 0.0
+        for tier, data in SIGNAL_1_TIERS.items():
+            if kw in data['words']:
+                kw_w = data['weight']
+                break
+        
+        net_weight += kw_w
+        if kw_w > 0:
+            pos_kws.append(kw)
+        elif kw_w < 0:
+            neg_kws.append(kw)
+
+    if len(pos_kws) > len(neg_kws):
+        kw_interp = f"{len(pos_kws)} crisis indicator(s) detected (e.g. {pos_kws[0]}), consistent with elevated severity."
+    elif len(neg_kws) > len(pos_kws):
+        kw_interp = f"Low-priority inquiry indicators (e.g. {neg_kws[0]}) outweighed escalation signals, driving severity downward."
+    elif pos_kws and neg_kws:
+        kw_interp = f"System detected competing signals — escalation markers ({pos_kws[0]}) vs inquiry indicators ({neg_kws[0]}). Net effect: {inferred_severity}."
+    else:
+        kw_interp = "No strong urgency or routine keywords detected; text lacks explicit escalation markers."
+
+    all_kws = matched_keywords[:5] if matched_keywords else []
     evidence.append({
-        'signal': 'keyword_analysis',
+        'signal': 'keyword',
         'source_field': 'Ticket_Description',
-        'value': ', '.join(kws) if kws else 'No crisis keywords detected',
-        'weight': f"{min(0.90, len(kws) * 0.15 + 0.10):.2f}",
-        'interpretation': (
-            f"{len(kws)} urgency keyword(s) found in description: {', '.join(kws[:3])}." if kws
-            else 'No high-urgency keywords found; text appears to describe a routine issue.'
-        )
+        'value': ', '.join(all_kws) if all_kws else 'No keywords detected',
+        'weight': f"{net_weight:.2f}",
+        'interpretation': kw_interp
     })
 
     # ---------------------------------------------------------
     # EVIDENCE VECTOR 2: SLA / Resolution Time Boundaries
     # ---------------------------------------------------------
     res_time = ticket.get('Resolution_Time_Hours', ticket.get('Resolution Time (in hours)'))
-    res_time_observation = "Resolution time data was unavailable."
     
     if res_time is not None:
         try:
             actual = float(res_time)
             exp_min, exp_max = EXPECTED_RESOLUTION.get(assigned, (0, 999))
             
-            if actual > exp_max:
-                interp = (f"Resolved in {actual:.0f}h, exceeding the {exp_max}h ceiling "
-                          f"for '{assigned}' tickets. Indicates SLA breach or irregular handling.")
-                res_time_observation = f"Furthermore, the actual resolution time of {actual:.0f}h exceeded the normal maximum of {exp_max}h for '{assigned}' tickets."
-            elif actual < exp_min and exp_min > 0:
-                interp = (f"Resolved in {actual:.0f}h, below the {exp_min}h floor "
-                          f"for '{assigned}' tickets. Indicates rapid, out-of-band handling.")
-                res_time_observation = f"Furthermore, the ticket was closed in just {actual:.0f}h, falling well below the typical {exp_min}h minimum for '{assigned}' tickets."
+            # Custom Interpretation for Mismatches
+            if mismatch_type == 'Hidden Crisis' and actual < exp_min:
+                interp = f"Despite being assigned {assigned}, resolution time of {actual:.0f}h suggests the agent may have escalated handling after recognizing the severity."
+            elif mismatch_type == 'False Alarm' and actual <= exp_max:
+                interp = f"Resolution in {actual:.0f}h reflects the agent's execution of a {assigned}-tier playbook, not the objective content severity. Fast resolution in this case supports the False Alarm classification — the agent over-reacted to surface signals."
             else:
-                interp = (f"Resolution time of {actual:.0f}h is within normal range "
-                          f"({exp_min}-{exp_max}h) for '{assigned}' tickets.")
-                res_time_observation = f"The resolution time of {actual:.0f}h remained within the standard {exp_min}-{exp_max}h window."
-                
+                if actual > exp_max:
+                    interp = (f"Resolved in {actual:.0f}h, exceeding the {exp_max}h ceiling "
+                              f"for '{assigned}' tickets. Indicates SLA breach or irregular handling.")
+                elif actual < exp_min and exp_min > 0:
+                    interp = (f"Resolved in {actual:.0f}h, below the {exp_min}h floor "
+                              f"for '{assigned}' tickets. Indicates rapid, out-of-band handling.")
+                else:
+                    interp = (f"Resolution time of {actual:.0f}h is within normal range "
+                              f"({exp_min}-{exp_max}h) for '{assigned}' tickets.")
+                    
             evidence.append({
                 'signal': 'resolution_time',
                 'source_field': 'Resolution_Time_Hours',
@@ -80,7 +106,7 @@ def generate_dossier(ticket: Dict[str, Any], classifier_confidence: float,
                 'interpretation': interp
             })
         except (ValueError, TypeError):
-            res_time_observation = "Resolution time data was unavailable."
+            pass
 
     # ---------------------------------------------------------
     # EVIDENCE VECTOR 3: Channel Profiling
@@ -110,26 +136,31 @@ def generate_dossier(ticket: Dict[str, Any], classifier_confidence: float,
     # ---------------------------------------------------------
     # FORENSIC CONSTRAINT ANALYSIS (Zero Hallucination Execution)
     # ---------------------------------------------------------
-    kw_text = f"direct urgency markers like '{kws[0]}'" if kws else "an absence of critical escalation keywords"
-    
-    if mismatch_type == 'Consistent':
+    t_id = ticket.get('Ticket_ID', ticket.get('id', 'UNKNOWN'))
+    pos_str = ', '.join(pos_kws[:2]) if pos_kws else 'implicit urgency signals in description'
+    neg_str = ', '.join(neg_kws[:2]) if neg_kws else 'absence of routine inquiry language'
+
+    if mismatch_type == 'Hidden Crisis':
         constraint_analysis = (
-            f"An audit of ticket {ticket.get('Ticket_ID', ticket.get('id', 'UNKNOWN'))} confirms that the assigned '{assigned}' priority "
-            f"aligns with the objective severity. The system's semantic engine independently maps the customer's "
-            f"issue to the '{inferred_severity}' tier. {res_time_observation} Metadata and linguistic signals are consistent."
+            f"Audit of ticket {t_id} finds the assigned {assigned} priority understates objective severity. "
+            f"Despite {neg_str}, the semantic engine identified crisis-specific content ({pos_str}). "
+            f"The agent's assigned priority appears driven by surface tone rather than content severity."
+        )
+    elif mismatch_type == 'False Alarm':
+        constraint_analysis = (
+            f"Audit of ticket {t_id} finds the assigned {assigned} priority overstates objective severity. "
+            f"Escalation language ({pos_str}) created the appearance of urgency, but the actual description reveals routine content ({neg_str}). "
+            f"The agent responded to presentation, not substance."
         )
     else:
-        direction = "understates" if delta > 0 else "overstates"
         constraint_analysis = (
-            f"An audit of ticket {ticket.get('Ticket_ID', ticket.get('id', 'UNKNOWN'))} reveals that the assigned '{assigned}' priority "
-            f"{direction} the objective severity by {abs(delta)} level(s). The system's semantic engine maps the customer's "
-            f"issue to a '{inferred_severity}' tier, primarily driven by {kw_text} in the description. "
-            f"{res_time_observation} Ultimately, the conflicting metadata and linguistic signals classify this case as a {mismatch_type}."
+            f"Audit of ticket {t_id} confirms the assigned '{assigned}' priority aligns with objective severity. "
+            f"The semantic engine and metadata signals consistently support the {inferred_severity} classification."
         )
 
     # Compile Final Payload
     return {
-        'ticket_id':           str(ticket.get('Ticket_ID', ticket.get('id', 'UNKNOWN'))),
+        'ticket_id':           t_id,
         'assigned_priority':   assigned,
         'inferred_severity':   inferred_severity,
         'mismatch_type':       mismatch_type,
