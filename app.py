@@ -136,8 +136,15 @@ def run_inference_pipeline(df):
             probs = torch.softmax(outputs.logits, dim=1)[:, 1].cpu().numpy()
             
         for prob in probs:
-            confidences.append(float(prob))
-            predictions.append(1 if prob >= pipeline['threshold'] else 0)
+            # 1. Determine the binary prediction based on your threshold
+            is_mismatch_pred = 1 if prob >= pipeline['threshold'] else 0
+            predictions.append(is_mismatch_pred)
+            
+            # 2. THE FIX: Calculate the TRUE confidence for the UI
+            # If the model predicts Mismatch (1), the confidence is just the raw prob.
+            # If the model predicts Consistent (0), the confidence is (1.0 - prob).
+            true_confidence = prob if is_mismatch_pred == 1 else (1.0 - prob)
+            confidences.append(float(true_confidence))
             
     df['confidence'] = confidences
     df['is_mismatch'] = predictions
