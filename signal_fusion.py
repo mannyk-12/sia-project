@@ -11,13 +11,11 @@ import spacy
 # ---------------------------------------------------------
 # SPACY NLP INITIALIZATION
 # ---------------------------------------------------------
-try:
-    nlp = spacy.load("en_core_web_sm")
-except OSError:
-    print("Downloading spaCy model 'en_core_web_sm'...")
-    import os
-    os.system("python -m spacy download en_core_web_sm")
-    nlp = spacy.load("en_core_web_sm")
+import spacy
+import en_core_web_sm
+
+# Load the model directly from the installed wheel package
+nlp = en_core_web_sm.load()
 
 # ---------------------------------------------------------
 # CONSTANTS & CONFIGURATION
