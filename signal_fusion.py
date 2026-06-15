@@ -41,7 +41,7 @@ SIGNAL_1_TIERS = {
     },
     'tech_critical': {
         'weight': 1.5, 
-        'words': ['crash', 'outage', 'data loss', 'completely down', 'system down', 'deleted']
+        'words': ['crash', 'outage', 'data loss', 'completely down', 'system down', 'deleted', 'wiped', 'nuked', 'fried', 'bricked', 'dead', 'vanished']
     },
     'billing_high': {
         'weight': 1.0, 
