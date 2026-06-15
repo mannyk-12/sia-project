@@ -37,23 +37,23 @@ PRIORITY_TO_NUM = {
 SIGNAL_1_TIERS = {
     'fraud_critical': {
         'weight': 2.0, 
-        'words': ['fraud', 'unauthorized', 'stolen', 'hacked', 'compromised', 'scam', 'breach', 'illegal charge', 'credit card', 'password', 'plain text', 'data leak', 'exposed', 'vulnerability']
+        'words': ['fraud', 'unauthorized', 'stolen', 'hacked', 'compromised', 'scam', 'breach', 'illegal charge', 'credit card', 'password', 'plain text', 'data leak', 'exposed', 'vulnerability', 'identity theft', 'phishing', 'malware', 'ransomware', 'trojan', 'virus', 'spyware', 'keylogger']
     },
     'tech_critical': {
         'weight': 1.5, 
-        'words': ['crash', 'outage', 'data loss', 'completely down', 'system down', 'deleted', 'wiped', 'nuked', 'fried', 'bricked', 'dead', 'vanished', 'leak', 'visible to everyone']
+        'words': ['crash', 'outage', 'data loss', 'completely down', 'system down', 'deleted', 'wiped', 'nuked', 'fried', 'bricked', 'dead', 'vanished', 'leak', 'visible to everyone', 'exposed', 'vulnerability', 'security hole', 'exploit']
     },
     'billing_high': {
         'weight': 1.0, 
-        'words': ['charged twice', 'overcharged', 'refund', 'wrong amount', 'cancel subscription']
+        'words': ['charged twice', 'overcharged', 'refund', 'wrong amount', 'cancel subscription', 'amount deducted', 'amount is deducted', 'billing error', 'invoice', 'receipt', 'payment failed', 'double charge', 'unauthorized charge', 'subscription renewal', 'billing dispute', 'credit card charge', 'payment issue']
     },
     'account_med': {
         'weight': 0.6, 
-        'words': ['login failed', 'locked out', 'not syncing', 'sync error', 'spinning wheel', 'keeps failing']
+        'words': ['login failed', 'locked out', 'not syncing', 'sync error', 'spinning wheel', 'keeps failing', 'cannot access', 'password reset', 'reset link', 'verification email', 'two-factor', '2fa', 'authentication error']
     },
     'inquiry_low': {
         'weight': -0.8, 
-        'words': ['how to', 'how do i', 'hours of operation', 'wondering', 'headquarters', 'can you']
+        'words': ['how to', 'how do i', 'hours of operation', 'wondering', 'headquarters', 'can you', 'what is', 'where is', 'when will', 'is it possible', 'is there a way', 'could you', 'would you', 'please advise', 'looking for information', 'seeking guidance', 'requesting assistance']
     },
     'escalation': {
         'weight': 1.0, 
