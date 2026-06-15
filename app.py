@@ -171,7 +171,7 @@ def run_inference_pipeline(df):
     # 7. Dossier Generation (For Mismatches only)
     dossiers = []
     for _, row in df.iterrows():
-        if row['is_mismatch'] == 1:
+        if row['Prediction'] in ["Hidden Crisis", "False Alarm"]:
             es = row['embed_severity_score']
             if es >= pipeline['t_high']: e_str = "Critical"
             elif es >= pipeline['t_medium']: e_str = "High"
