@@ -142,10 +142,30 @@ def run_inference_pipeline(df):
     df['confidence'] = confidences
     df['is_mismatch'] = predictions
     
-    # 6. Typology Mapping
+    # 6. Typology Mapping with Strict "Trust but Verify" Guardrails
     def get_prediction_label(row):
-        if row['is_mismatch'] == 0: return "Consistent"
-        return "Hidden Crisis" if row['severity_delta'] > 0 else "False Alarm"
+        delta = row['severity_delta']
+        ai_mismatch = row['is_mismatch']
+        
+        # GUARDRAIL 1: Mathematical Override (Catches AI False Negatives / Traps)
+        # If the objective math proves a severe mismatch (Delta of 2 or more), it overrides the AI.
+        if delta >= 2:
+            return "Hidden Crisis"
+        elif delta <= -2:
+            return "False Alarm"
+            
+        # GUARDRAIL 2: AI False Positive Protection
+        # If the AI hallucinates a mismatch but the delta is 0, force it to Consistent.
+        if ai_mismatch == 1 and delta == 0:
+            return "Consistent"
+            
+        # 3. Standard AI Nuance 
+        # If the delta is borderline (1 or -1), trust DeBERTa's semantic judgment.
+        if ai_mismatch == 1:
+            return "Hidden Crisis" if delta > 0 else "False Alarm"
+            
+        return "Consistent"
+        
     df['Prediction'] = df.apply(get_prediction_label, axis=1)
     
     # 7. Dossier Generation (For Mismatches only)
