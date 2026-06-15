@@ -325,14 +325,6 @@ with tab2:
                         label = f"{f_row['Ticket_ID']} | {f_row['Prediction']} (Assigned: {f_row['Priority_Level']} ➡️ Inferred: {f_row['inferred_severity']})"
                         with st.expander(label):
                             st.json(f_row['dossier'])
-                
-                if flagged_rows.empty:
-                    st.success("No priority mismatches were flagged in this dataset.")
-                else:
-                    for _, f_row in flagged_rows.iterrows():
-                        label = f"{f_row['Ticket_ID']} | {f_row['Prediction']} (Assigned: {f_row['Priority_Level']} ➡️ Inferred: {f_row['inferred_severity']})"
-                        with st.expander(label):
-                            st.json(f_row['dossier'])
 
 # ==============================================================================
 # TAB 3: PRIORITY MISMATCH DASHBOARD
