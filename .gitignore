@@ -1,0 +1,19 @@
+# Virtual Environment
+venv/
+env/
+.env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# HuggingFace cache
+.cache/
+
+# Outputs (optional - include if you want judges to see results)
+# outputs/
+
+# OS files
+.DS_Store
+Thumbs.db
