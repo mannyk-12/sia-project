@@ -314,7 +314,17 @@ with tab2:
                 
                 # Expandable Dossier Views
                 st.markdown("### 🔎 Generated Mismatch Dossiers")
-                flagged_rows = final_batch_df[final_batch_df['is_mismatch'] == 1]
+                
+                # UPDATE: Filter by the final Guardrail Prediction, not the raw AI boolean
+                flagged_rows = final_batch_df[final_batch_df['Prediction'].isin(["Hidden Crisis", "False Alarm"])]
+                
+                if flagged_rows.empty:
+                    st.success("No priority mismatches were flagged in this dataset.")
+                else:
+                    for _, f_row in flagged_rows.iterrows():
+                        label = f"{f_row['Ticket_ID']} | {f_row['Prediction']} (Assigned: {f_row['Priority_Level']} ➡️ Inferred: {f_row['inferred_severity']})"
+                        with st.expander(label):
+                            st.json(f_row['dossier'])
                 
                 if flagged_rows.empty:
                     st.success("No priority mismatches were flagged in this dataset.")
