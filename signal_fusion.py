@@ -37,11 +37,11 @@ PRIORITY_TO_NUM = {
 SIGNAL_1_TIERS = {
     'fraud_critical': {
         'weight': 2.0, 
-        'words': ['fraud', 'unauthorized', 'stolen', 'hacked', 'compromised', 'scam', 'breach', 'illegal charge']
+        'words': ['fraud', 'unauthorized', 'stolen', 'hacked', 'compromised', 'scam', 'breach', 'illegal charge', 'credit card', 'password', 'plain text', 'data leak', 'exposed', 'vulnerability']
     },
     'tech_critical': {
         'weight': 1.5, 
-        'words': ['crash', 'outage', 'data loss', 'completely down', 'system down', 'deleted', 'wiped', 'nuked', 'fried', 'bricked', 'dead', 'vanished']
+        'words': ['crash', 'outage', 'data loss', 'completely down', 'system down', 'deleted', 'wiped', 'nuked', 'fried', 'bricked', 'dead', 'vanished', 'leak', 'visible to everyone']
     },
     'billing_high': {
         'weight': 1.0, 
